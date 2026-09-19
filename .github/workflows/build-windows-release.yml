@@ -1,0 +1,121 @@
+name: Build Windows Release
+
+# Builds the full Windows x64 product (Code OSS + bedrock-agents extension)
+# on a Windows runner and publishes it as a GitHub release on this fork.
+# A Windows runner is required: native modules are compiled per-OS and the
+# packaging steps (rcedit, Inno Setup) are Windows-only.
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_ref:
+        description: 'Branch or tag to build'
+        required: true
+        default: 'bedrock-agents'
+      release_tag:
+        description: 'GitHub release tag to publish'
+        required: true
+        default: 'v1.139.0-bedrock.1'
+      release_title:
+        description: 'GitHub release title'
+        required: true
+        default: 'Code OSS 1.139.0 + Bedrock Agents (Windows x64)'
+
+permissions:
+  contents: write
+
+jobs:
+  windows-x64:
+    runs-on: windows-latest
+    timeout-minutes: 180
+    env:
+      NODE_OPTIONS: --max-old-space-size=8192
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.build_ref }}
+
+      - name: Setup Node.js (from .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Compile client and extensions
+        run: npm run compile
+
+      - name: Package VSCode-win32-x64 (minified)
+        run: npx gulp vscode-win32-x64-min
+
+      - name: Inno updater
+        run: npx gulp vscode-win32-x64-inno-updater
+
+      - name: Build user setup executable
+        run: npx gulp vscode-win32-x64-user-setup
+
+      - name: Create portable zip
+        shell: pwsh
+        run: |
+          Push-Location ..
+          7z a -tzip -mx=5 "$PWD\VSCode-win32-x64.zip" VSCode-win32-x64 | Out-Null
+          Pop-Location
+          Get-Item ..\VSCode-win32-x64.zip | Select-Object Name, Length
+
+      - name: Collect artifacts and checksums
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem .build\win32-x64\user-setup\*.exe | Select-Object -First 1
+          if (-not $setup) { throw "setup executable not found in .build\win32-x64\user-setup" }
+          Copy-Item $setup.FullName .\VSCodeUserSetup-x64.exe
+          $hashes = @()
+          foreach ($f in @('..\VSCode-win32-x64.zip', '.\VSCodeUserSetup-x64.exe')) {
+            $h = Get-FileHash (Resolve-Path $f) -Algorithm SHA256
+            $hashes += "$($h.Hash.ToLower())  $(Split-Path $f -Leaf)"
+          }
+          $hashes | Out-File -Encoding utf8 checksums.txt
+          Get-Content checksums.txt
+
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.release_tag }}
+          TITLE: ${{ inputs.release_title }}
+          BUILD_REF: ${{ inputs.build_ref }}
+        run: |
+          $notes = @"
+          Windows x64 build of **Code OSS** (VS Code from sources, version 1.139.0) with the built-in **Bedrock Agents** extension, built from branch ``$env:BUILD_REF`` of this fork.
+
+          ## Bedrock Agents (bring-your-own-agent for AWS Bedrock Converse)
+
+          Define agents as JSON files and they appear as language models under the **AWS Bedrock (Converse)** vendor in the model picker:
+
+          - Drop ``*.json`` files into ``.vscode/bedrock-agents/`` in your workspace (or point the ``bedrockAgents.agentFiles`` setting at other locations).
+          - Each file mirrors the Bedrock Converse request shape: ``modelId``, ``region``, ``profile``, ``system``, ``inferenceConfig`` (``maxTokens`` / ``temperature`` / ``topP`` / ``topK`` / ``stopSequences``), ``additionalModelRequestFields``.
+          - Credentials resolve via the AWS default provider chain (environment variables, shared config/credentials files, SSO, IAM roles), a named ``profile``, or explicit keys via the provider configuration (Manage Models).
+          - Supports streaming, tool calling, thinking/reasoning parts, usage reporting, per-model configuration, and image input.
+          - See ``extensions/bedrock-agents/examples/nemotron-super.json`` in the source tree for a ready-to-adapt example.
+
+          ## Assets
+
+          | Asset | Description |
+          |---|---|
+          | ``VSCodeUserSetup-x64.exe`` | Per-user Windows installer (Inno Setup) |
+          | ``VSCode-win32-x64.zip`` | Portable archive — unpack and run ``Code - OSS.exe`` |
+          | ``checksums.txt`` | SHA-256 checksums |
+
+          ## Notes
+
+          - **Unsigned binaries**: Windows SmartScreen will warn because the executables are not code-signed. This is expected for a personal OSS build.
+          - This is a Code OSS build (open-source product configuration), not an official Microsoft Visual Studio Code build.
+          "@
+          gh release view $env:TAG --repo diegitoo13/vscode 2>$null | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:TAG ..\VSCode-win32-x64.zip .\VSCodeUserSetup-x64.exe .\checksums.txt --clobber --repo diegitoo13/vscode
+          } else {
+            gh release create $env:TAG ..\VSCode-win32-x64.zip .\VSCodeUserSetup-x64.exe .\checksums.txt --repo diegitoo13/vscode --title $env:TITLE --notes $notes --target $env:BUILD_REF
+          }
