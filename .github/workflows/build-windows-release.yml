@@ -26,7 +26,9 @@ permissions:
 
 jobs:
   windows-x64:
-    runs-on: windows-latest
+    # windows-2022 image: ships Visual Studio 2022, which the repo's
+    # preinstall toolchain check requires (2026 in windows-latest is rejected).
+    runs-on: windows-2022
     timeout-minutes: 180
     env:
       NODE_OPTIONS: --max-old-space-size=8192
