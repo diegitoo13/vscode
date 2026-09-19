@@ -227,6 +227,8 @@ zone.js/dist/**
 # Keep the CLI's sdk/ shim layer: prepareBuiltInCopilotRipgrepShim requires it
 # to exist in the packaged extension when copilot is packaged from local
 # source (non-VSIX builds); platform natives are re-added during packaging.
+# The package.json is needed to read the pinned CLI version.
+!@github/copilot/package.json
 !@github/copilot/sdk/**
 
 # Standalone Copilot CLI platform packages are not product dependencies.
