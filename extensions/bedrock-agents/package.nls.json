@@ -1,0 +1,17 @@
+{
+	"displayName": "Bedrock Agents",
+	"description": "Bring-your-own-agent support for AWS Bedrock Converse. Define agents as JSON files and use them as language models.",
+	"providerDisplayName": "AWS Bedrock (Converse)",
+	"configurationTitle": "Bedrock Agents",
+	"agentFilesDescription": "List of agent definition files or glob patterns, resolved against each workspace folder. Absolute file paths are also supported. Each JSON file defines one agent backed by an AWS Bedrock Converse model.",
+	"configRegionTitle": "AWS Region",
+	"configRegionDescription": "Default AWS region for Bedrock requests. Agent files may override this. Falls back to the AWS_REGION environment variable, then us-west-2.",
+	"configProfileTitle": "AWS Profile",
+	"configProfileDescription": "Optional named AWS profile from the shared credentials/config files. Leave empty to use the default credential provider chain (environment variables, shared files, SSO, IAM roles).",
+	"configAccessKeyIdTitle": "AWS Access Key ID",
+	"configAccessKeyIdDescription": "Optional explicit AWS access key ID. Prefer the default credential chain or a named profile when possible.",
+	"configSecretAccessKeyTitle": "AWS Secret Access Key",
+	"configSecretAccessKeyDescription": "Optional explicit AWS secret access key. Required when an access key ID is set.",
+	"configSessionTokenTitle": "AWS Session Token",
+	"configSessionTokenDescription": "Optional AWS session token for temporary credentials."
+}

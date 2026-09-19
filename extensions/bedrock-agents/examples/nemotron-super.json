@@ -1,0 +1,31 @@
+{
+	// Bring-your-own-agent definition for AWS Bedrock Converse.
+	// Copy this file to `.vscode/bedrock-agents/` in your workspace (or point the
+	// `bedrockAgents.agentFiles` setting at it) and the model appears in the
+	// model picker under "AWS Bedrock (Converse)".
+	//
+	// Credentials resolve through the default AWS provider chain (environment
+	// variables, shared credentials/config files, SSO, IAM roles). Set
+	// "profile" to use a named profile, or configure explicit credentials on
+	// the provider via "Manage Models".
+	"id": "nemotron-super",
+	"name": "Nemotron Super 120B (Bedrock)",
+	"description": "NVIDIA Nemotron Super 3 120B via AWS Bedrock Converse",
+	"modelId": "nvidia.nemotron-super-3-120b",
+	"region": "us-west-2",
+	"system": [
+		"You are a helpful coding assistant."
+	],
+	"inferenceConfig": {
+		"maxTokens": 8192,
+		"temperature": 0.7,
+		"topP": 0.9
+	},
+	"capabilities": {
+		"toolCalling": true,
+		"thinking": true,
+		"maxInputTokens": 131072,
+		"maxOutputTokens": 8192,
+		"maxContextWindowTokens": 131072
+	}
+}
